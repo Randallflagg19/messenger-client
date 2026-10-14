@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+import { chat, messages } from './mockData'
+import { formatPhoneNumber, resizeComposer } from './utils'
 import styles from './App.module.css'
 
-function resizeComposer(input: HTMLTextAreaElement) {
-  // Сначала сбрасываем высоту, чтобы поле уменьшалось при удалении текста.
-  input.style.height = 'auto'
-  input.style.height = `${input.scrollHeight + 2}px`
-}
-
 function App() {
+  const phoneLabel = formatPhoneNumber(chat.phoneNumber)
+  const chatMessages = messages.filter((message) => message.chatId === chat.id)
+  const lastMessage = chatMessages.at(-1)
+
   // Пока это только переключение экранов каркаса на узком экране.
   const [isChatOpen, setIsChatOpen] = useState(true)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -44,14 +44,14 @@ function App() {
             aria-current={isChatOpen ? 'true' : undefined}
             onClick={() => setIsChatOpen(true)}
           >
-            <span className={styles.phone}>+7 900 123-45-67</span>
-            <span className={styles.preview}>Отлично, до встречи!</span>
+            <span className={styles.phone}>{phoneLabel}</span>
+            <span className={styles.preview}>{lastMessage?.text ?? 'Нет сообщений'}</span>
           </button>
         </nav>
 
       </aside>
 
-      <section className={styles.conversation} aria-label="Переписка с +7 900 123-45-67">
+      <section className={styles.conversation} aria-label={`Переписка с ${phoneLabel}`}>
         <header className={styles.chatHeader}>
           <button
             className={styles.back}
@@ -63,14 +63,16 @@ function App() {
               <path d="m14 6-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <h2>+7 900 123-45-67</h2>
+          <h2>{phoneLabel}</h2>
         </header>
 
         <div className={styles.messages}>
           <div className={styles.messageStack}>
-            <p className={styles.incoming}>Привет! Во сколько встречаемся?</p>
-            <p className={styles.outgoing}>Привет! Давай в 18:00, как договаривались.</p>
-            <p className={styles.incoming}>Отлично, до встречи!</p>
+            {chatMessages.map((message) => (
+              <p key={message.id} className={styles[message.direction]}>
+                {message.text}
+              </p>
+            ))}
           </div>
         </div>
 
