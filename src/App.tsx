@@ -5,8 +5,10 @@ import styles from './App.module.css'
 import { ChatList } from './components/ChatList'
 import { ChatView } from './components/ChatView'
 import { NewChatDialog } from './components/NewChatDialog'
+import { CredentialsForm } from './components/CredentialsForm'
 
 function App() {
+  const [isDemoOpen, setIsDemoOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [chats, setChats] = useState<Chat[]>([initialChat])
   const [selectedChatId, setSelectedChatId] = useState(initialChat.id)
@@ -51,8 +53,16 @@ function App() {
     setDrafts((previousDrafts) => ({ ...previousDrafts, [chat.id]: '' }))
   }
 
+  if (!isDemoOpen) {
+    return <CredentialsForm onOpenDemo={() => setIsDemoOpen(true)} />
+  }
+
   return (
     <main className={`${styles.layout} ${isChatOpen ? styles.chatOpen : ''}`}>
+      <header className={styles.demoBanner}>
+        <span>Демо · Сообщения не отправляются в Telegram</span>
+        <button type="button" onClick={() => setIsDemoOpen(false)}>К подключению</button>
+      </header>
       <div className={styles.sidebar}>
         <ChatList
           chats={chats}

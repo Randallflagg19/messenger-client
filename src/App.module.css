@@ -1,8 +1,31 @@
 .layout {
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100dvh;
   overflow: hidden;
+}
+
+.demoBanner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 20px;
+  border-bottom: 1px solid #e3e6ec;
+  background: #f5f8ff;
+  color: #526581;
+  font-size: 12px;
+}
+
+.demoBanner button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: #e7eeff;
+  color: #315fab;
 }
 
 .sidebar,
