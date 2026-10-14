@@ -1,29 +1,40 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { chat, messages as initialMessages } from './mockData'
-import type { Message } from './types'
-import { formatPhoneNumber, resizeComposer } from './utils'
+import { useState } from 'react'
+import { chat as initialChat, messages as initialMessages } from './mockData'
+import type { Chat, Message } from './types'
 import styles from './App.module.css'
+import { ChatList } from './components/ChatList'
+import { ChatView } from './components/ChatView'
+import { NewChatDialog } from './components/NewChatDialog'
 
 function App() {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
-  const [draft, setDraft] = useState('')
-  const phoneLabel = formatPhoneNumber(chat.phoneNumber)
+  const [chats, setChats] = useState<Chat[]>([initialChat])
+  const [selectedChatId, setSelectedChatId] = useState(initialChat.id)
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false)
+  const chat = chats.find((item) => item.id === selectedChatId) ?? initialChat
+  const draft = drafts[chat.id] ?? ''
   const chatMessages = messages.filter((message) => message.chatId === chat.id)
-  const lastMessage = chatMessages.at(-1)
 
-  // Пока это только переключение экранов каркаса на узком экране.
+  // На узком экране показываем либо список, либо переписку.
   const [isChatOpen, setIsChatOpen] = useState(true)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
-  const messagesRef = useRef<HTMLDivElement>(null)
 
-  useLayoutEffect(() => {
-    if (inputRef.current) resizeComposer(inputRef.current)
-  }, [draft])
+  function selectChat(id: string) {
+    setSelectedChatId(id)
+    setIsChatOpen(true)
+  }
 
-  useEffect(() => {
-    const container = messagesRef.current
-    if (container) container.scrollTop = container.scrollHeight
-  }, [messages, isChatOpen])
+  function createChat(phoneNumber: string) {
+    const existingChat = chats.find((item) => item.phoneNumber === phoneNumber)
+    if (existingChat) {
+      selectChat(existingChat.id)
+    } else {
+      const newChat: Chat = { id: crypto.randomUUID(), phoneNumber }
+      setChats((previousChats) => [...previousChats, newChat])
+      selectChat(newChat.id)
+    }
+    setIsNewChatOpen(false)
+  }
 
   function sendMessage() {
     if (!draft.trim()) return
@@ -37,94 +48,32 @@ function App() {
 
     // Пока добавляем сообщение только в локальное состояние.
     setMessages((previousMessages) => [...previousMessages, message])
-    setDraft('')
-    inputRef.current?.focus()
+    setDrafts((previousDrafts) => ({ ...previousDrafts, [chat.id]: '' }))
   }
-
-  useEffect(() => {
-    const input = inputRef.current
-    if (!input) return
-
-    // При изменении ширины окна меняются и переносы строк.
-    let previousWidth = -1
-    const observer = new ResizeObserver(() => {
-      if (input.clientWidth === previousWidth) return
-      previousWidth = input.clientWidth
-      if (previousWidth > 0) resizeComposer(input)
-    })
-    observer.observe(input)
-    return () => observer.disconnect()
-  }, [])
 
   return (
     <main className={`${styles.layout} ${isChatOpen ? styles.chatOpen : ''}`}>
-      <aside className={styles.sidebar} aria-label="Список чатов">
-        <header className={styles.sidebarHeader}>
-          <h1>Чаты</h1>
-          <button className={styles.newChat} type="button" disabled>
-            Новый чат
-          </button>
-        </header>
-
-        <nav className={styles.chatList} aria-label="Чаты">
-          <button
-            className={styles.chatItem}
-            type="button"
-            aria-current={isChatOpen ? 'true' : undefined}
-            onClick={() => setIsChatOpen(true)}
-          >
-            <span className={styles.phone}>{phoneLabel}</span>
-            <span className={styles.preview}>{lastMessage?.text ?? 'Нет сообщений'}</span>
-          </button>
-        </nav>
-
-      </aside>
-
-      <section className={styles.conversation} aria-label={`Переписка с ${phoneLabel}`}>
-        <header className={styles.chatHeader}>
-          <button
-            className={styles.back}
-            type="button"
-            aria-label="Вернуться к списку чатов"
-            onClick={() => setIsChatOpen(false)}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="m14 6-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <h2>{phoneLabel}</h2>
-        </header>
-
-        <div ref={messagesRef} className={styles.messages}>
-          <div className={styles.messageStack}>
-            {chatMessages.map((message) => (
-              <p key={message.id} className={styles[message.direction]}>
-                {message.text}
-              </p>
-            ))}
-          </div>
-        </div>
-
-        <div className={styles.composer}>
-          <textarea
-            ref={inputRef}
-            className={styles.input}
-            aria-label="Текст сообщения"
-            placeholder="Написать сообщение…"
-            rows={1}
-            value={draft}
-            onChange={(event) => setDraft(event.currentTarget.value)}
-          />
-          <button
-            className={styles.send}
-            type="button"
-            disabled={!draft.trim()}
-            onClick={sendMessage}
-          >
-            Отправить
-          </button>
-        </div>
-      </section>
+      <div className={styles.sidebar}>
+        <ChatList
+          chats={chats}
+          messages={messages}
+          selectedChatId={selectedChatId}
+          onSelect={selectChat}
+          onNewChat={() => setIsNewChatOpen(true)}
+        />
+      </div>
+      <div className={styles.conversation}>
+        <ChatView
+          chat={chat}
+          messages={chatMessages}
+          draft={draft}
+          isVisible={isChatOpen}
+          onBack={() => setIsChatOpen(false)}
+          onDraftChange={(text) => setDrafts((previous) => ({ ...previous, [chat.id]: text }))}
+          onSend={sendMessage}
+        />
+      </div>
+      {isNewChatOpen && <NewChatDialog onCreate={createChat} onClose={() => setIsNewChatOpen(false)} />}
     </main>
   )
 }
