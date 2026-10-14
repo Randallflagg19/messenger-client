@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import { chat, messages } from './mockData'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { chat, messages as initialMessages } from './mockData'
+import type { Message } from './types'
 import { formatPhoneNumber, resizeComposer } from './utils'
 import styles from './App.module.css'
 
 function App() {
+  const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [draft, setDraft] = useState('')
   const phoneLabel = formatPhoneNumber(chat.phoneNumber)
   const chatMessages = messages.filter((message) => message.chatId === chat.id)
   const lastMessage = chatMessages.at(-1)
@@ -11,6 +14,32 @@ function App() {
   // Пока это только переключение экранов каркаса на узком экране.
   const [isChatOpen, setIsChatOpen] = useState(true)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const messagesRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    if (inputRef.current) resizeComposer(inputRef.current)
+  }, [draft])
+
+  useEffect(() => {
+    const container = messagesRef.current
+    if (container) container.scrollTop = container.scrollHeight
+  }, [messages, isChatOpen])
+
+  function sendMessage() {
+    if (!draft.trim()) return
+
+    const message: Message = {
+      id: crypto.randomUUID(),
+      chatId: chat.id,
+      text: draft,
+      direction: 'outgoing',
+    }
+
+    // Пока добавляем сообщение только в локальное состояние.
+    setMessages((previousMessages) => [...previousMessages, message])
+    setDraft('')
+    inputRef.current?.focus()
+  }
 
   useEffect(() => {
     const input = inputRef.current
@@ -66,7 +95,7 @@ function App() {
           <h2>{phoneLabel}</h2>
         </header>
 
-        <div className={styles.messages}>
+        <div ref={messagesRef} className={styles.messages}>
           <div className={styles.messageStack}>
             {chatMessages.map((message) => (
               <p key={message.id} className={styles[message.direction]}>
@@ -83,9 +112,15 @@ function App() {
             aria-label="Текст сообщения"
             placeholder="Написать сообщение…"
             rows={1}
-            onInput={(event) => resizeComposer(event.currentTarget)}
+            value={draft}
+            onChange={(event) => setDraft(event.currentTarget.value)}
           />
-          <button className={styles.send} type="button" disabled>
+          <button
+            className={styles.send}
+            type="button"
+            disabled={!draft.trim()}
+            onClick={sendMessage}
+          >
             Отправить
           </button>
         </div>

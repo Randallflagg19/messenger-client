@@ -121,6 +121,7 @@
 
 .messageStack {
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 12px;
   width: 100%;
@@ -136,6 +137,7 @@
   font-size: 15px;
   line-height: 1.5;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 .incoming {
@@ -191,6 +193,15 @@
   color: #6176a1;
   font-size: 14px;
   font-weight: 600;
+}
+
+.send:not(:disabled) {
+  background: #356de5;
+  color: #fff;
+}
+
+.send:not(:disabled):hover {
+  background: #285bc8;
 }
 
 @media (max-width: 700px) {
