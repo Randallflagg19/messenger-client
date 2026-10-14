@@ -1,121 +1,94 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useRef, useState } from 'react'
+import styles from './App.module.css'
+
+function resizeComposer(input: HTMLTextAreaElement) {
+  // Сначала сбрасываем высоту, чтобы поле уменьшалось при удалении текста.
+  input.style.height = 'auto'
+  input.style.height = `${input.scrollHeight + 2}px`
+}
 
 function App() {
-  const [count, setCount] = useState(0)
+  // Пока это только переключение экранов каркаса на узком экране.
+  const [isChatOpen, setIsChatOpen] = useState(true)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const input = inputRef.current
+    if (!input) return
+
+    // При изменении ширины окна меняются и переносы строк.
+    let previousWidth = -1
+    const observer = new ResizeObserver(() => {
+      if (input.clientWidth === previousWidth) return
+      previousWidth = input.clientWidth
+      if (previousWidth > 0) resizeComposer(input)
+    })
+    observer.observe(input)
+    return () => observer.disconnect()
+  }, [])
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <main className={`${styles.layout} ${isChatOpen ? styles.chatOpen : ''}`}>
+      <aside className={styles.sidebar} aria-label="Список чатов">
+        <header className={styles.sidebarHeader}>
+          <h1>Чаты</h1>
+          <button className={styles.newChat} type="button" disabled>
+            Новый чат
+          </button>
+        </header>
 
-      <div className="ticks"></div>
+        <nav className={styles.chatList} aria-label="Чаты">
+          <button
+            className={styles.chatItem}
+            type="button"
+            aria-current={isChatOpen ? 'true' : undefined}
+            onClick={() => setIsChatOpen(true)}
+          >
+            <span className={styles.phone}>+7 900 123-45-67</span>
+            <span className={styles.preview}>Отлично, до встречи!</span>
+          </button>
+        </nav>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+      </aside>
+
+      <section className={styles.conversation} aria-label="Переписка с +7 900 123-45-67">
+        <header className={styles.chatHeader}>
+          <button
+            className={styles.back}
+            type="button"
+            aria-label="Вернуться к списку чатов"
+            onClick={() => setIsChatOpen(false)}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m14 6-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <h2>+7 900 123-45-67</h2>
+        </header>
+
+        <div className={styles.messages}>
+          <div className={styles.messageStack}>
+            <p className={styles.incoming}>Привет! Во сколько встречаемся?</p>
+            <p className={styles.outgoing}>Привет! Давай в 18:00, как договаривались.</p>
+            <p className={styles.incoming}>Отлично, до встречи!</p>
+          </div>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
+
+        <div className={styles.composer}>
+          <textarea
+            ref={inputRef}
+            className={styles.input}
+            aria-label="Текст сообщения"
+            placeholder="Написать сообщение…"
+            rows={1}
+            onInput={(event) => resizeComposer(event.currentTarget)}
+          />
+          <button className={styles.send} type="button" disabled>
+            Отправить
+          </button>
         </div>
       </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    </main>
   )
 }
 
