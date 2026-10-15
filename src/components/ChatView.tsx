@@ -7,6 +7,10 @@ import styles from './ChatView.module.css'
 type ChatViewProps = {
   chat: Chat
   messages: Message[]
+  isDemo: boolean
+  isSending: boolean
+  sendDisabled: boolean
+  sendError: string
   draft: string
   isVisible: boolean
   onBack: () => void
@@ -14,7 +18,7 @@ type ChatViewProps = {
   onSend: () => void
 }
 
-export function ChatView({ chat, messages, draft, isVisible, onBack, onDraftChange, onSend }: ChatViewProps) {
+export function ChatView({ chat, messages, isDemo, isSending, sendDisabled, sendError, draft, isVisible, onBack, onDraftChange, onSend }: ChatViewProps) {
   const messagesRef = useRef<HTMLDivElement>(null)
   const phoneLabel = formatPhoneNumber(chat.phoneNumber)
   const lastMessageId = messages.at(-1)?.id
@@ -38,11 +42,12 @@ export function ChatView({ chat, messages, draft, isVisible, onBack, onDraftChan
         {messages.length === 0 && <p className={styles.emptyChat}>Пока нет сообщений</p>}
         <div className={styles.messageStack}>
           {messages.map((message) => (
-            <p key={message.id} className={styles[message.direction]}>{message.text}</p>
+            <p key={message.id} className={styles[message.direction]}>{message.text}{!isDemo && message.direction === 'outgoing' && <small className={styles.messageStatus}>Принято в очередь</small>}</p>
           ))}
         </div>
       </div>
-      <MessageComposer draft={draft} onDraftChange={onDraftChange} onSend={onSend} />
+      {sendError && <p role="alert" className={styles.sendError}>{sendError}</p>}
+      <MessageComposer isSending={isSending} sendDisabled={sendDisabled} draft={draft} onDraftChange={onDraftChange} onSend={onSend} />
     </section>
   )
 }

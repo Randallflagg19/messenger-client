@@ -1,18 +1,20 @@
 import { useState } from 'react'
 import type { SubmitEvent } from 'react'
+import type { Credentials } from '../api/greenApi'
 import { getStateInstance, describeInstanceState } from '../api/greenApi'
 import { messengerConfig } from '../config'
 import styles from './CredentialsForm.module.css'
 
 type CredentialsFormProps = {
   onOpenDemo: () => void
+  onConnected: (credentials: Credentials) => void
 }
 
 type ConnectionStatus =
-  | { kind: 'idle' | 'loading' | 'success' }
+  | { kind: 'idle' | 'loading' }
   | { kind: 'error'; message: string }
 
-export function CredentialsForm({ onOpenDemo }: CredentialsFormProps) {
+export function CredentialsForm({ onOpenDemo, onConnected }: CredentialsFormProps) {
   const [idInstance, setIdInstance] = useState('')
   const [apiTokenInstance, setApiTokenInstance] = useState('')
   const [status, setStatus] = useState<ConnectionStatus>({ kind: 'idle' })
@@ -35,7 +37,7 @@ export function CredentialsForm({ onOpenDemo }: CredentialsFormProps) {
     if (!result.ok) {
       setStatus({ kind: 'error', message: result.message })
     } else if (result.state === 'authorized') {
-      setStatus({ kind: 'success' })
+      onConnected({ idInstance: idInstance.trim(), apiTokenInstance: apiTokenInstance.trim() })
     } else {
       setStatus({ kind: 'error', message: describeInstanceState(result.state) })
     }
@@ -78,9 +80,6 @@ export function CredentialsForm({ onOpenDemo }: CredentialsFormProps) {
           />
           <p className={styles.notice}>Проверим состояние инстанса {messengerConfig.name}. Данные используются только для запроса и не сохраняются приложением в браузерном хранилище.</p>
           {error && <p id="credentials-error" className={styles.error} role="alert">{error}</p>}
-          {status.kind === 'success' && (
-            <p className={styles.success} role="status">Проверка успешна: инстанс авторизован. Отправка и получение реальных сообщений ещё не подключены.</p>
-          )}
           {isLoading && <p className={styles.notice} role="status">Проверяем подключение…</p>}
           <button className={styles.connect} type="submit" disabled={isLoading}>
             {isLoading ? 'Подключение…' : 'Подключиться'}

@@ -1,14 +1,17 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
+import { MAX_MESSAGE_LENGTH } from '../api/greenApi'
 import { resizeComposer } from '../utils'
 import styles from './MessageComposer.module.css'
 
 type MessageComposerProps = {
+  isSending: boolean
+  sendDisabled: boolean
   draft: string
   onDraftChange: (text: string) => void
   onSend: () => void
 }
 
-export function MessageComposer({ draft, onDraftChange, onSend }: MessageComposerProps) {
+export function MessageComposer({ isSending, sendDisabled, draft, onDraftChange, onSend }: MessageComposerProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useLayoutEffect(() => {
@@ -31,7 +34,7 @@ export function MessageComposer({ draft, onDraftChange, onSend }: MessageCompose
   }, [])
 
   function handleSend() {
-    if (!draft.trim()) return
+    if (!draft.trim() || sendDisabled || draft.length > MAX_MESSAGE_LENGTH) return
     onSend()
     inputRef.current?.focus()
   }
@@ -44,11 +47,12 @@ export function MessageComposer({ draft, onDraftChange, onSend }: MessageCompose
         aria-label="Текст сообщения"
         placeholder="Написать сообщение…"
         rows={1}
+        maxLength={MAX_MESSAGE_LENGTH}
         value={draft}
         onChange={(event) => onDraftChange(event.currentTarget.value)}
       />
-      <button className={styles.send} type="button" disabled={!draft.trim()} onClick={handleSend}>
-        Отправить
+      <button className={styles.send} type="button" disabled={!draft.trim() || sendDisabled || draft.length > MAX_MESSAGE_LENGTH} onClick={handleSend}>
+        {isSending ? 'Отправка…' : 'Отправить'}
       </button>
     </div>
   )

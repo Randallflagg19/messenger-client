@@ -107,3 +107,18 @@
     max-width: 88%;
   }
 }
+
+.messageStatus {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #526581;
+}
+
+.sendError {
+  padding: 12px 24px;
+  background: #fff2f1;
+  color: #b3261e;
+  font-size: 13px;
+  line-height: 1.5;
+}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { getStateInstance, describeInstanceState } from '../src/api/greenApi.ts'
+import { getStateInstance, describeInstanceState, checkAccount, sendTextMessage } from '../src/api/greenApi.ts'
 
 const credentials = { idInstance: '123', apiTokenInstance: 'test-token' }
 
@@ -75,4 +75,65 @@ test('сохраняет неавторизованное состояние и 
   assert.match(describeInstanceState('blocked'), /заблокирован/)
   assert.match(describeInstanceState('suspended'), /ограничения/)
   assert.match(describeInstanceState('future-state'), /неизвестное/)
+})
+
+test('CheckAccount отправляет номер числом и возвращает chatId', async (t) => {
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.match(url, /\/checkAccount\//)
+    assert.equal(options.method, 'POST')
+    assert.equal(options.headers['Content-Type'], 'application/json')
+    assert.deepEqual(JSON.parse(options.body), { phoneNumber: 79001234567 })
+    return Response.json({ exist: true, chatId: '987654321' })
+  })
+  assert.deepEqual(await checkAccount(credentials, '79001234567'), { ok: true, chatId: '987654321' })
+})
+
+test('CheckAccount не создаёт чат для отсутствующего или скрытого аккаунта', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ exist: false, chatId: '' }))
+  const result = await checkAccount(credentials, '79001234567')
+  assert.equal(result.ok, false)
+  assert.match(result.message, /приватности/)
+})
+
+test('CheckAccount отклоняет сервисную ошибку HTTP 200 и неправильный chatId', async (t) => {
+  for (const body of [{ status: false, reason: 'instance is starting or not authorized' },
+    { exist: true }, { exist: true, chatId: 123 }, { exist: true, chatId: '-123' }]) {
+    t.mock.method(globalThis, 'fetch', async () => Response.json(body))
+    assert.equal((await checkAccount(credentials, '79001234567')).ok, false)
+  }
+})
+
+test('SendMessage сохраняет адресата и переносы текста, возвращает серверный ID', async (t) => {
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.match(url, /\/sendMessage\//)
+    assert.equal(options.method, 'POST')
+    assert.deepEqual(JSON.parse(options.body), { chatId: '987654321', message: 'Привет!\nВторая строка' })
+    return Response.json({ idMessage: 'message-from-api' })
+  })
+  assert.deepEqual(await sendTextMessage(credentials, '987654321', 'Привет!\nВторая строка'),
+    { ok: true, idMessage: 'message-from-api' })
+})
+
+test('SendMessage не делает запрос для пустого и слишком длинного текста', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', () => { throw new Error('Не должен вызываться') })
+  for (const text of [' \n ', 'a'.repeat(4097)]) {
+    assert.equal((await sendTextMessage(credentials, '987654321', text)).ok, false)
+  }
+  assert.equal(fetch.mock.callCount(), 0)
+})
+
+test('SendMessage не повторяет неоднозначный запрос и не раскрывает ошибку с токеном', async (t) => {
+  const fetch = t.mock.method(globalThis, 'fetch', async () => { throw new Error('test-token') })
+  const result = await sendTextMessage(credentials, '987654321', 'Привет!')
+  assert.equal(result.ok, false)
+  assert.match(result.message, /Перед повтором проверьте Telegram/)
+  assert.doesNotMatch(result.message, /test-token/)
+  assert.equal(fetch.mock.callCount(), 1)
+})
+
+test('SendMessage не считает HTTP 200 без ID подтверждением отправки', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({ status: false }))
+  const result = await sendTextMessage(credentials, '987654321', 'Привет!')
+  assert.equal(result.ok, false)
+  assert.match(result.message, /Перед повторной отправкой/)
 })
