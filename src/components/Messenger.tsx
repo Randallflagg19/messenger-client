@@ -117,7 +117,6 @@ export function Messenger({ credentials, onExit }: MessengerProps) {
           isSending={sendingChatId === chat.id}
           sendDisabled={sendingChatId !== null}
           sendError={sendErrors[chat.id] ?? ''}
-          isDemo={isDemo}
           isVisible={isChatOpen}
           onBack={() => setIsChatOpen(false)}
           onDraftChange={(text) => setDrafts((previous) => ({ ...previous, [chat.id]: text }))}

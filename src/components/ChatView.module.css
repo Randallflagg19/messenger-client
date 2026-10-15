@@ -108,13 +108,6 @@
   }
 }
 
-.messageStatus {
-  display: block;
-  margin-top: 4px;
-  font-size: 11px;
-  color: #526581;
-}
-
 .sendError {
   padding: 12px 24px;
   background: #fff2f1;

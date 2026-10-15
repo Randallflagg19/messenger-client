@@ -7,7 +7,6 @@ import styles from './ChatView.module.css'
 type ChatViewProps = {
   chat: Chat
   messages: Message[]
-  isDemo: boolean
   isSending: boolean
   sendDisabled: boolean
   sendError: string
@@ -18,7 +17,7 @@ type ChatViewProps = {
   onSend: () => void
 }
 
-export function ChatView({ chat, messages, isDemo, isSending, sendDisabled, sendError, draft, isVisible, onBack, onDraftChange, onSend }: ChatViewProps) {
+export function ChatView({ chat, messages, isSending, sendDisabled, sendError, draft, isVisible, onBack, onDraftChange, onSend }: ChatViewProps) {
   const messagesRef = useRef<HTMLDivElement>(null)
   const scrollPosition = useRef({ chatId: '', nearBottom: true })
   const phoneLabel = getChatLabel(chat)
@@ -52,7 +51,7 @@ export function ChatView({ chat, messages, isDemo, isSending, sendDisabled, send
         {messages.length === 0 && <p className={styles.emptyChat}>Пока нет сообщений</p>}
         <div className={styles.messageStack}>
           {messages.map((message) => (
-            <p key={message.id} className={styles[message.direction]}>{message.text}{!isDemo && message.direction === 'outgoing' && <small className={styles.messageStatus}>Принято в очередь</small>}</p>
+            <p key={message.id} className={styles[message.direction]}>{message.text}</p>
           ))}
         </div>
       </div>
