@@ -27,7 +27,6 @@ export function Messenger({ credentials, onExit }: MessengerProps) {
   const draft = chat ? drafts[chat.id] ?? '' : ''
   const chatMessages = messages.filter((message) => message.chatId === chat?.id)
 
-  // На узком экране показываем либо список, либо переписку.
   const [isChatOpen, setIsChatOpen] = useState(isDemo)
 
   const receiveMessage = useCallback(({ chat: incomingChat, message }: IncomingText) => {

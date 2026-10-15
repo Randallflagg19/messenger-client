@@ -11,7 +11,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-// null — событие вне нашего объёма: статусы, исходящие, группы или вложения.
+// null означает неподдерживаемое событие, которое можно подтвердить и пропустить.
 export function parseIncomingText(body: Record<string, unknown>): IncomingText | null {
   if (typeof body.typeWebhook !== 'string') throw new Error('Нет типа уведомления.')
   if (body.typeWebhook !== 'incomingMessageReceived') return null
@@ -59,14 +59,14 @@ function wait(milliseconds: number, signal: AbortSignal): Promise<void> {
   })
 }
 
-// Последовательная обработка: receive → обработка → delete. Никакого setInterval.
+// Следующий запрос уведомления начинается после обработки и подтверждения предыдущего.
 export async function runNotificationLoop(
   credentials: Credentials,
   signal: AbortSignal,
   onMessage: (incoming: IncomingText) => void,
   onStatus: (status: ReceivingStatus) => void,
 ): Promise<void> {
-  // Cleanup StrictMode успевает отменить пробный запуск до первого запроса.
+  // Даём очистке эффекта в StrictMode отменить пробный запуск до первого запроса.
   await Promise.resolve()
   let pending: QueueNotification | null = null
   let retryDelay = 2_000

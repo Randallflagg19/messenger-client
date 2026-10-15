@@ -7,7 +7,6 @@ export type Chat = {
 
 export type Message = {
   id: string
-  // Ссылка на Chat.id — определяет, к какой переписке относится сообщение.
   chatId: string
   text: string
   direction: 'incoming' | 'outgoing'
