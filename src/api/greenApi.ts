@@ -9,14 +9,17 @@ type StateResult =
   | { ok: true; state: string }
   | { ok: false; message: string }
 
-type ApiResult = { ok: true; data: unknown } | { ok: false; message: string }
+export type ApiError = { ok: false; message: string; retryable?: boolean }
+type ApiResult = { ok: true; data: unknown } | ApiError
+
+type RequestOptions = { signal?: AbortSignal; suffix?: string; httpMethod?: 'DELETE'; allowEmpty?: boolean }
 
 export const MAX_MESSAGE_LENGTH = 4096
 
 const REQUEST_TIMEOUT_MS = 15_000
 
 // Telegram: https://green-api.com/telegram/docs/api/account/GetStateInstance/
-async function request(credentials: Credentials, method: string, body?: object): Promise<ApiResult> {
+async function request(credentials: Credentials, method: string, body?: object, options: RequestOptions = {}): Promise<ApiResult> {
   const id = credentials.idInstance.trim()
   const token = credentials.apiTokenInstance.trim()
   if (!/^\d+$/.test(id) || !token) {
@@ -24,13 +27,16 @@ async function request(credentials: Credentials, method: string, body?: object):
   }
 
   const controller = new AbortController()
+  const abort = () => controller.abort()
+  options.signal?.addEventListener('abort', abort, { once: true })
+  if (options.signal?.aborted) controller.abort()
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
   try {
     const response = await fetch(
-      `${messengerConfig.apiUrl}/waInstance${id}/${method}/${encodeURIComponent(token)}`,
+      `${messengerConfig.apiUrl}/waInstance${id}/${method}/${encodeURIComponent(token)}${options.suffix ?? ''}`,
       {
-        method: body ? 'POST' : 'GET',
+        method: options.httpMethod ?? (body ? 'POST' : 'GET'),
         ...(body ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
         signal: controller.signal,
         cache: 'no-store',
@@ -43,22 +49,25 @@ async function request(credentials: Credentials, method: string, body?: object):
     // Не показываем тело ошибки или URL: они могут содержать токен.
     if (!response.ok) {
       const messages: Record<number, string> = {
+        400: 'GREEN-API отклонил запрос (HTTP 400). Для получения уведомлений проверьте, что webhookUrl пуст, а входящие уведомления включены в кабинете.',
         401: 'GREEN-API отклонил авторизацию (HTTP 401). Проверьте данные инстанса в кабинете.',
         403: 'GREEN-API отказал в доступе (HTTP 403). Причиной могут быть данные инстанса или ограничения на стороне сервиса.',
         429: 'Слишком много запросов (HTTP 429). Подождите и повторите проверку вручную.',
       }
       return {
         ok: false,
+        retryable: response.status === 429 || response.status >= 500,
         message: messages[response.status] ?? `Ошибка GREEN-API (HTTP ${response.status}). Повторите проверку позже.`,
       }
     }
 
     let data: unknown
     try {
-      data = await response.json()
+      const text = await response.text()
+      data = options.allowEmpty && !text.trim() ? null : JSON.parse(text)
     } catch {
       if (controller.signal.aborted) {
-        return { ok: false, message: 'GREEN-API не ответил за 15 секунд. Попробуйте позже.' }
+        return { ok: false, retryable: !options.signal?.aborted, message: 'GREEN-API не ответил за 15 секунд. Попробуйте позже.' }
       }
       return { ok: false, message: 'GREEN-API вернул некорректный JSON.' }
     }
@@ -66,12 +75,14 @@ async function request(credentials: Credentials, method: string, body?: object):
   } catch {
     return {
       ok: false,
+      retryable: !options.signal?.aborted,
       message: controller.signal.aborted
         ? 'GREEN-API не ответил за 15 секунд. Попробуйте позже.'
         : 'Не удалось связаться с GREEN-API. Возможны проблема сети, недоступность сервиса или блокировка запроса браузером (CORS).',
     }
   } finally {
     clearTimeout(timeout)
+    options.signal?.removeEventListener('abort', abort)
   }
 }
 
@@ -137,4 +148,35 @@ export function describeInstanceState(state: string): string {
     case 'suspended': return 'На аккаунт наложены временные ограничения. Проверьте их в кабинете GREEN-API.'
     default: return 'GREEN-API вернул неизвестное состояние инстанса. Подключение не подтверждено.'
   }
+}
+
+export type QueueNotification = { receiptId: number; body: Record<string, unknown> }
+
+export async function receiveNotification(credentials: Credentials, signal: AbortSignal): Promise<
+  { ok: true; notification: QueueNotification | null } | ApiError
+> {
+  const result = await request(credentials, 'receiveNotification', undefined, {
+    signal, suffix: '?receiveTimeout=5', allowEmpty: true,
+  })
+  if (!result.ok) return result
+  const data = result.data
+  if (data === null) return { ok: true, notification: null }
+  if (!isObject(data) || !Number.isSafeInteger(data.receiptId) || typeof data.receiptId !== 'number'
+    || data.receiptId <= 0 || !isObject(data.body)) {
+    return { ok: false, message: 'Некорректный формат уведомления. Получение остановлено, уведомление не удалено.' }
+  }
+  return { ok: true, notification: { receiptId: data.receiptId, body: data.body } }
+}
+
+export async function deleteNotification(credentials: Credentials, receiptId: number, signal: AbortSignal): Promise<
+  { ok: true } | ApiError
+> {
+  const result = await request(credentials, 'deleteNotification', undefined, {
+    signal, httpMethod: 'DELETE', suffix: `/${receiptId}`,
+  })
+  if (!result.ok) return result
+  if (!isObject(result.data) || result.data.result !== true) {
+    return { ok: false, message: 'GREEN-API не подтвердил удаление уведомления. Проверьте, что очередь не читает другая вкладка или приложение, и возобновите получение.' }
+  }
+  return { ok: true }
 }

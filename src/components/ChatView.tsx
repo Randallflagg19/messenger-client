@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Chat, Message } from '../types'
-import { formatPhoneNumber } from '../utils'
+import { getChatLabel } from '../utils'
 import { MessageComposer } from './MessageComposer'
 import styles from './ChatView.module.css'
 
@@ -20,13 +20,20 @@ type ChatViewProps = {
 
 export function ChatView({ chat, messages, isDemo, isSending, sendDisabled, sendError, draft, isVisible, onBack, onDraftChange, onSend }: ChatViewProps) {
   const messagesRef = useRef<HTMLDivElement>(null)
-  const phoneLabel = formatPhoneNumber(chat.phoneNumber)
+  const scrollPosition = useRef({ chatId: '', nearBottom: true })
+  const phoneLabel = getChatLabel(chat)
   const lastMessageId = messages.at(-1)?.id
+  const lastDirection = messages.at(-1)?.direction
 
   useEffect(() => {
     const container = messagesRef.current
-    if (container) container.scrollTop = container.scrollHeight
-  }, [chat.id, lastMessageId, isVisible])
+    if (!container) return
+    if (scrollPosition.current.chatId !== chat.id || scrollPosition.current.nearBottom || lastDirection === 'outgoing') {
+      container.scrollTop = container.scrollHeight
+      scrollPosition.current.nearBottom = true
+    }
+    scrollPosition.current.chatId = chat.id
+  }, [chat.id, lastMessageId, lastDirection, isVisible])
 
   return (
     <section className={styles.conversation} aria-label={`Переписка с ${phoneLabel}`}>
@@ -38,7 +45,10 @@ export function ChatView({ chat, messages, isDemo, isSending, sendDisabled, send
         </button>
         <h2>{phoneLabel}</h2>
       </header>
-      <div ref={messagesRef} className={styles.messages}>
+      <div ref={messagesRef} className={styles.messages} onScroll={(event) => {
+        const container = event.currentTarget
+        scrollPosition.current.nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80
+      }}>
         {messages.length === 0 && <p className={styles.emptyChat}>Пока нет сообщений</p>}
         <div className={styles.messageStack}>
           {messages.map((message) => (

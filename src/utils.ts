@@ -1,3 +1,5 @@
+import type { Chat } from './types'
+
 // Базовая проверка международной записи, без проверки аккаунта Telegram.
 export function normalizePhoneNumber(value: string): string | null {
   const trimmed = value.trim()
@@ -20,4 +22,8 @@ export function resizeComposer(input: HTMLTextAreaElement) {
   // Сначала сбрасываем высоту, чтобы поле уменьшалось при удалении текста.
   input.style.height = 'auto'
   input.style.height = `${input.scrollHeight + 2}px`
+}
+
+export function getChatLabel(chat: Chat): string {
+  return chat.phoneNumber ? formatPhoneNumber(chat.phoneNumber) : chat.name || `Чат ${chat.id}`
 }

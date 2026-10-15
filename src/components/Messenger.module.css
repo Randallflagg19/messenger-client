@@ -58,3 +58,13 @@
   color: #657082;
   text-align: center;
 }
+
+.receivingError {
+  flex: 1 1 100%;
+  color: #a33b26;
+  line-height: 1.5;
+}
+
+.receivingError button {
+  margin-left: 12px;
+}

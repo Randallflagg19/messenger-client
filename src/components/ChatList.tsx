@@ -1,5 +1,5 @@
 import type { Chat, Message } from '../types'
-import { formatPhoneNumber } from '../utils'
+import { getChatLabel } from '../utils'
 import styles from './ChatList.module.css'
 
 type ChatListProps = {
@@ -28,7 +28,7 @@ export function ChatList({ chats, messages, selectedChatId, onSelect, onNewChat 
               aria-current={chat.id === selectedChatId ? 'true' : undefined}
               onClick={() => onSelect(chat.id)}
             >
-              <span className={styles.phone}>{formatPhoneNumber(chat.phoneNumber)}</span>
+              <span className={styles.phone}>{getChatLabel(chat)}</span>
               <span className={styles.preview}>{lastMessage?.text ?? 'Нет сообщений'}</span>
             </button>
           )

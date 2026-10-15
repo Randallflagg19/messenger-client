@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { messengerConfig } from '../config'
 import { chat as initialChat, messages as initialMessages } from '../mockData'
 import type { Chat, Message } from '../types'
@@ -8,6 +8,9 @@ import { ChatView } from './ChatView'
 import { NewChatDialog } from './NewChatDialog'
 import type { Credentials } from '../api/greenApi'
 import { checkAccount, sendTextMessage, MAX_MESSAGE_LENGTH } from '../api/greenApi'
+
+import { useNotifications } from '../hooks/useNotifications'
+import type { IncomingText } from '../api/notifications'
 
 type MessengerProps = { credentials: Credentials | null; onExit: () => void }
 
@@ -27,6 +30,14 @@ export function Messenger({ credentials, onExit }: MessengerProps) {
   // На узком экране показываем либо список, либо переписку.
   const [isChatOpen, setIsChatOpen] = useState(isDemo)
 
+  const receiveMessage = useCallback(({ chat: incomingChat, message }: IncomingText) => {
+    setChats((previous) => previous.some((item) => item.id === incomingChat.id)
+      ? previous : [...previous, incomingChat])
+    setMessages((previous) => previous.some((item) => item.id === message.id && item.chatId === message.chatId)
+      ? previous : [...previous, message])
+  }, [])
+  const { status: receiving, retry: retryReceiving } = useNotifications(credentials, receiveMessage)
+
   function selectChat(id: string) {
     setSelectedChatId(id)
     setIsChatOpen(true)
@@ -44,7 +55,9 @@ export function Messenger({ credentials, onExit }: MessengerProps) {
         id = result.chatId
       }
       const newChat: Chat = { id, phoneNumber }
-      setChats((previousChats) => previousChats.some((item) => item.id === id) ? previousChats : [...previousChats, newChat])
+      setChats((previousChats) => previousChats.some((item) => item.id === id)
+        ? previousChats.map((item) => item.id === id ? { ...item, phoneNumber } : item)
+        : [...previousChats, newChat])
       selectChat(id)
     }
     setIsNewChatOpen(false)
@@ -69,7 +82,7 @@ export function Messenger({ credentials, onExit }: MessengerProps) {
       id = result.idMessage
     }
     const message: Message = { id, chatId, text, direction: 'outgoing' }
-    setMessages((previous) => [...previous, message])
+    setMessages((previous) => previous.some((item) => item.id === id && item.chatId === chatId) ? previous : [...previous, message])
     // Не стираем новый черновик, если его изменили во время запроса.
     setDrafts((previous) => previous[chatId] === text ? { ...previous, [chatId]: '' } : previous)
     setSendingChatId(null)
@@ -78,7 +91,13 @@ export function Messenger({ credentials, onExit }: MessengerProps) {
   return (
     <main className={`${styles.layout} ${isChatOpen ? styles.chatOpen : ''}`}>
       <header className={styles.demoBanner}>
-        <span>{isDemo ? `Демо · Сообщения не отправляются в ${messengerConfig.name}` : `${messengerConfig.name} · Отправка подключена. Получение ответов пока недоступно.`}</span>
+        <span>{isDemo ? `Демо · Сообщения не отправляются в ${messengerConfig.name}` : `${messengerConfig.name} · ${receiving.kind === 'waiting' ? 'Ожидание сообщений' : 'Получение приостановлено'}`}</span>
+        {!isDemo && receiving.kind !== 'waiting' && (
+          <span role="status" className={styles.receivingError}>
+            {receiving.message}
+            {receiving.kind === 'stopped' && <button type="button" onClick={retryReceiving}>Возобновить</button>}
+          </span>
+        )}
         <button type="button" onClick={onExit}>Выйти</button>
       </header>
       <div className={styles.sidebar}>
