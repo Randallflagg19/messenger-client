@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { SubmitEvent } from 'react'
 import { normalizePhoneNumber } from '../utils'
+import { messengerConfig } from '../config'
 import styles from './NewChatDialog.module.css'
 
 type NewChatDialogProps = {
@@ -47,7 +48,7 @@ export function NewChatDialog({ onCreate, onClose }: NewChatDialogProps) {
           aria-invalid={Boolean(error)}
           aria-describedby={error ? 'phone-error' : 'phone-hint'}
         />
-        <p id="phone-hint" className={styles.hint}>Российский номер можно ввести через 8 или +7. Чат создаётся локально, без проверки аккаунта Telegram.</p>
+        <p id="phone-hint" className={styles.hint}>Российский номер можно ввести через 8 или +7. Чат создаётся локально, без проверки аккаунта {messengerConfig.name}.</p>
         {error && <p id="phone-error" className={styles.error} role="alert">{error}</p>}
         <div className={styles.actions}>
           <button type="button" onClick={onClose}>Отмена</button>

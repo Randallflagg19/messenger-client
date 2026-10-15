@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { messengerConfig } from './config'
 import { chat as initialChat, messages as initialMessages } from './mockData'
 import type { Chat, Message } from './types'
 import styles from './App.module.css'
@@ -60,7 +61,7 @@ function App() {
   return (
     <main className={`${styles.layout} ${isChatOpen ? styles.chatOpen : ''}`}>
       <header className={styles.demoBanner}>
-        <span>Демо · Сообщения не отправляются в Telegram</span>
+        <span>Демо · Сообщения не отправляются в {messengerConfig.name}</span>
         <button type="button" onClick={() => setIsDemoOpen(false)}>К подключению</button>
       </header>
       <div className={styles.sidebar}>
