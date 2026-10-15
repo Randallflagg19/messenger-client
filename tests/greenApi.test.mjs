@@ -137,3 +137,12 @@ test('SendMessage не считает HTTP 200 без ID подтвержден�
   assert.equal(result.ok, false)
   assert.match(result.message, /Перед повторной отправкой/)
 })
+
+test('HTTP 400 при подключении и отправке не предлагает настройки уведомлений', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => new Response('', { status: 400 }))
+  for (const result of [await getStateInstance(credentials), await checkAccount(credentials, '79001234567'), await sendTextMessage(credentials, '123', 'Текст')]) {
+    assert.equal(result.ok, false)
+    assert.match(result.message, /400/)
+    assert.doesNotMatch(result.message, /уведомлен|webhook/i)
+  }
+})

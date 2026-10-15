@@ -136,3 +136,23 @@ test('пробный запуск StrictMode отменяется до запр�
   await loop
   assert.equal(fetch.mock.callCount(), 0)
 })
+
+test('HTTP 400 получения объясняет настройки уведомлений', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => new Response('', { status: 400 }))
+  const result = await receiveNotification(credentials, new AbortController().signal)
+  assert.equal(result.ok, false)
+  assert.match(result.message, /адрес отправки уведомлений пуст/)
+})
+
+test('HTTP 429 получения сообщает об автоматическом повторе, а не ручной проверке', async (t) => {
+  const controller = new AbortController()
+  t.mock.method(globalThis, 'fetch', async () => new Response('', { status: 429 }))
+  const statuses = []
+  await runNotificationLoop(credentials, controller.signal, () => {}, (status) => {
+    statuses.push(status)
+    controller.abort()
+  })
+  assert.equal(statuses[0].kind, 'retrying')
+  assert.match(statuses[0].message, /через 2 с/)
+  assert.doesNotMatch(statuses[0].message, /вручную/)
+})

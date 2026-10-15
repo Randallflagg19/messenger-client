@@ -49,15 +49,17 @@ async function request(credentials: Credentials, method: string, body?: object, 
     // Не показываем тело ошибки или URL: они могут содержать токен.
     if (!response.ok) {
       const messages: Record<number, string> = {
-        400: 'GREEN-API отклонил запрос (HTTP 400). Для получения уведомлений проверьте, что webhookUrl пуст, а входящие уведомления включены в кабинете.',
+        400: method === 'receiveNotification'
+          ? 'GREEN-API отклонил получение уведомлений (HTTP 400). Проверьте, что адрес отправки уведомлений пуст, а входящие уведомления включены в кабинете.'
+          : 'GREEN-API отклонил запрос (HTTP 400). Проверьте введённые данные.',
         401: 'GREEN-API отклонил авторизацию (HTTP 401). Проверьте данные инстанса в кабинете.',
         403: 'GREEN-API отказал в доступе (HTTP 403). Причиной могут быть данные инстанса или ограничения на стороне сервиса.',
-        429: 'Слишком много запросов (HTTP 429). Подождите и повторите проверку вручную.',
+        429: 'Превышен лимит запросов GREEN-API (HTTP 429).',
       }
       return {
         ok: false,
         retryable: response.status === 429 || response.status >= 500,
-        message: messages[response.status] ?? `Ошибка GREEN-API (HTTP ${response.status}). Повторите проверку позже.`,
+        message: messages[response.status] ?? `Ошибка GREEN-API (HTTP ${response.status}).`,
       }
     }
 
