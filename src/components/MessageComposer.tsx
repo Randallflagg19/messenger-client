@@ -48,6 +48,8 @@ export function MessageComposer({ isSending, sendDisabled, draft, onDraftChange,
         placeholder="Написать сообщение…"
         rows={1}
         maxLength={MAX_MESSAGE_LENGTH}
+        readOnly={isSending}
+        aria-busy={isSending}
         value={draft}
         onChange={(event) => onDraftChange(event.currentTarget.value)}
       />

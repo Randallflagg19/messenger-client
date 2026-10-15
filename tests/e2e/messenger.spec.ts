@@ -37,7 +37,7 @@ async function mockApi(page: Page, override: (route: Route, method: string) => P
   })
 }
 
-test('ответ отправки остаётся в чате A после переключения в B; новый черновик сохраняется', async ({ page }) => {
+test('поле заблокировано во время отправки; ответ остаётся в A, черновик B сохраняется', async ({ page }) => {
   let finishSend: (() => Promise<void>) | undefined
   await mockApi(page, async (route, method) => {
     if (method !== 'sendMessage') return false
@@ -52,7 +52,10 @@ test('ответ отправки остаётся в чате A после пе
   await input.fill('Сообщение для A')
   await page.getByRole('button', { name: 'Отправить', exact: true }).click()
   await expect.poll(() => Boolean(finishSend)).toBe(true)
-  await input.fill('Новый черновик A')
+  await expect(input).not.toBeEditable()
+  await input.focus()
+  await page.keyboard.type('Лишний текст')
+  await expect(input).toHaveValue('Сообщение для A')
   await page.getByRole('button', { name: /\+7 900 123-45-68/ }).click()
   await input.fill('Черновик B')
   await finishSend!()
@@ -62,7 +65,8 @@ test('ответ отправки остаётся в чате A после пе
   await expect(input).toHaveValue('Черновик B')
   await page.getByRole('button', { name: /\+7 900 123-45-67/ }).click()
   await expect(conversation).toContainText('Сообщение для A')
-  await expect(input).toHaveValue('Новый черновик A')
+  await expect(input).toHaveValue('')
+  await expect(input).toBeEditable()
 })
 
 test('выход отменяет ожидающий запрос уведомлений', async ({ page }) => {
@@ -117,4 +121,27 @@ test('на узком экране входящий текст не сбрасы
   await chat.click()
   await expect(page.getByRole('textbox', { name: 'Текст сообщения' })).toBeVisible()
   await expect(scroller).toBeVisible()
+})
+
+
+test('ошибка отправки разблокирует поле и сохраняет текст для исправления', async ({ page }) => {
+  let finishSend: (() => Promise<void>) | undefined
+  await mockApi(page, async (route, method) => {
+    if (method !== 'sendMessage') return false
+    finishSend = () => route.fulfill({ status: 503, body: '' })
+    return true
+  })
+  await connect(page)
+  await createChat(page, '+79001234567')
+  const input = page.getByRole('textbox', { name: 'Текст сообщения' })
+  await input.fill('Сохранить при ошибке')
+  await page.getByRole('button', { name: 'Отправить', exact: true }).click()
+  await expect.poll(() => Boolean(finishSend)).toBe(true)
+  await expect(input).not.toBeEditable()
+  await finishSend!()
+  await expect(page.getByRole('alert')).toContainText('503')
+  await expect(input).toBeEditable()
+  await expect(input).toHaveValue('Сохранить при ошибке')
+  await input.fill('Исправленный текст')
+  await expect(input).toHaveValue('Исправленный текст')
 })
